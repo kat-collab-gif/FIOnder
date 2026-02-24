@@ -1,24 +1,22 @@
 """
-Пример 2: Сохранить текст из PDF в TXT файл
+Пример: Сохранить текст из PDF в TXT файл
 """
 
 from ocr_search import save_to_txt
 import time
 import os
 
-start_time = time.time()
-timestamp = int(start_time)
+# === НАСТРОЙКИ ===
+WITH_COORDS = True  # True — координаты, False — текст
+# =================
 
-# Сохраняем в файл
-input = 'CROC.pdf'
-pdf_name = os.path.splitext(os.path.basename(input))[0]
+start = time.time()
+ts = int(start)
 
-output_dir = 'output'
-os.makedirs(output_dir, exist_ok=True)
+os.makedirs('output', exist_ok=True)
+output = f'output/CROCOutput{ts}.txt'
 
-output = os.path.join(output_dir, f'{pdf_name}Output{timestamp}.txt')
-save_to_txt(input, output)
+save_to_txt('CROC.pdf', output, with_coords=WITH_COORDS)
 
-elapsed = time.time() - start_time
-print(f'Готово! Текст сохранён в {output}')
-print(f'Время работы: {elapsed:.2f} сек.')
+print(f'Сохранено в: {output}')
+print(f'Время: {time.time()-start:.2f} сек.')
