@@ -59,7 +59,7 @@ python main.py
 ```
 
 Результат сохранится в `output/<Filename>Output<timestamp>.txt`,
-где <Filename> - название вашего файла, а <timestamp> - Unix-время начала распознавания файла
+где \\<Filename\\> - название вашего файла, а \\<timestamp\\> - Unix-время начала распознавания файла
 
 ---
 
