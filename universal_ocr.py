@@ -63,9 +63,59 @@ class TextCleaner:
         'from', 'as', 'or', 'an', 'be', 'are', 'was', 'were', 'has', 'have', 'had'
     }
 
+    # Типичные окончания ФИО и слов
+    VALID_ENDINGS = {
+        'ич', 'ич.', 'ича', 'ов', 'ов.', 'ева', 'ева.', 'ин', 'ина', 'ин.', 'ина.',
+        'ич', 'ичь', 'ич.', 'ичь.', 'ича', 'ичьа',
+        'и', 'и.', 'й', 'й.', 'ь', 'ь.', 'ъ', 'ъ.',
+        'а', 'а.', 'я', 'я.', 'о', 'о.', 'е', 'е.',
+        'ович', 'евич', 'овна', 'евна',
+    }
+
     @classmethod
-    def clean(cls, text: str) -> str:
-        """Очистка текста от мусора."""
+    def is_valid_word(cls, word: str) -> bool:
+        """Проверка, что слово похожо на настоящее."""
+        if not word:
+            return False
+
+        # Слова с & валидны (Sales&Management)
+        if '&' in word and len(word) > 3:
+            return True
+
+        # Короткие слова из списка
+        if len(word) <= 2:
+            return word.lower() in cls.SHORT_WORDS
+
+        # Инициалы (И.И., Иванов И., И И)
+        # Одна буква (кириллица/латиница) с точкой или без
+        if re.match(r'^[А-Яа-яA-Z][.]?$', word):
+            return True
+        # Две буквы с точкой (И.О.)
+        if re.match(r'^[А-Яа-яA-Z]\.[А-Яа-яA-Z][.]?$', word):
+            return True
+
+        # Слова с типичными русскими/английскими окончаниями
+        for ending in cls.VALID_ENDINGS:
+            if word.lower().endswith(ending):
+                return True
+
+        # Длинные слова (4+ буквы) с нормальным соотношением букв
+        if len(word) >= 4:
+            letters = len(re.findall(r'[А-Яа-яA-Za-z]', word))
+            if letters / len(word) >= 0.7:
+                return True
+
+        return False
+
+    @classmethod
+    def clean(cls, text: str, words_with_conf: List[Tuple[str, float]] = None) -> str:
+        """
+        Очистка текста от мусора.
+
+        Args:
+            text: Исходный текст
+            words_with_conf: Слова с уверенностью (для фильтрации конца)
+        """
         if not text:
             return ""
 
@@ -77,12 +127,10 @@ class TextCleaner:
             if not line:
                 continue
 
-            # Пропуск строк с большим количеством спецсимволов
             special_count = len(re.findall(r'[^\w\sА-Яа-яA-Za-z\"\'&;,\(\)\.\-]', line))
             if special_count / max(len(line), 1) > 0.4:
                 continue
 
-            # Пропуск строк без букв
             if not re.search(r'[А-Яа-яA-Za-z]', line):
                 continue
 
@@ -97,38 +145,26 @@ class TextCleaner:
             if not clean:
                 continue
 
-            if '&' in clean and len(clean) > 3:
+            if cls.is_valid_word(clean):
                 filtered.append(clean)
-                continue
 
-            if len(clean) <= 2:
-                if clean.lower() not in cls.SHORT_WORDS:
-                    continue
-
-            letters = len(re.findall(r'[А-Яа-яA-Za-z]', clean))
-            if letters / len(clean) < 0.5:
-                continue
-
-            digits = len(re.findall(r'\d', clean))
-            if digits / len(clean) > 0.5 and len(clean) > 4:
-                continue
-
-            filtered.append(clean)
-
-        # Удаление мусора в начале и конце (3+ буквы)
+        # Удаление мусора в начале и конце
         if filtered:
             start = 0
             for i, w in enumerate(filtered):
-                if '&' in w or len(re.findall(r'[А-Яа-яA-Za-z]', w)) >= 3:
+                if cls.is_valid_word(w) and len(w.replace('.', '')) >= 2:
                     start = i
                     break
 
             end = len(filtered)
             for i in range(len(filtered) - 1, -1, -1):
                 w = filtered[i]
-                if '&' in w or len(re.findall(r'[А-Яа-яA-Za-z]', w)) >= 3:
-                    end = i + 1
-                    break
+                # Проверяем если слово валидное И имеет нормальную длину
+                if cls.is_valid_word(w):
+                    # Для инициалов и коротких слов — проверяем контекст
+                    if len(w.replace('.', '')) >= 2 or w.endswith('.'):
+                        end = i + 1
+                        break
 
             filtered = filtered[start:end]
 
