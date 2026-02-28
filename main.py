@@ -83,20 +83,10 @@ def ocr(pdf):
 def main():
     t0 = time.time()
     ts = int(t0)
-    name = sys.argv[1] if len(sys.argv) > 1 else 'CROC'
-    pdf = name if name.endswith('.pdf') else f'{name}.pdf'
+    pdf = 'CROC.pdf'
     
-    # Поиск файла
     if not os.path.exists(pdf):
-        for r, _, fs in os.walk('.'):
-            for f in fs:
-                if f.lower() == pdf.lower(): pdf = os.path.join(r, f); break
-            else: continue
-            break
-        else:
-            ps = [f for f in os.listdir('.') if f.lower().endswith('.pdf')]
-            pdf = ps[0] if ps else sys.exit(f"PDF '{pdf}' не найден!")
-            print(f"Используем: {pdf}")
+        sys.exit(f"PDF '{pdf}' не найден!")
     
     base = os.path.splitext(os.path.basename(pdf))[0]
     os.makedirs('output', exist_ok=True)
