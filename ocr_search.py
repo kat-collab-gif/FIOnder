@@ -21,11 +21,66 @@ MIN_CONFIDENCE = 30
 VOWELS = set("аеёиоуыэюяaeiouyАЕЁИОУЫЭЮЯ")
 
 SHORT_WORDS = {
-    'и', 'в', 'на', 'по', 'с', 'к', 'у', 'о', 'а', 'но', 'же', 'бы', 'ли',
-    'что', 'за', 'под', 'над', 'при', 'без', 'для', 'от', 'до', 'из', 'об', 'во',
-    'я', 'ты', 'он', 'она', 'оно', 'мы', 'вы', 'они', 'её', 'его', 'мне', 'тебе',
-    'is', 'a', 'the', 'to', 'of', 'and', 'in', 'for', 'on', 'with', 'at', 'by',
-    'from', 'as', 'or', 'an', 'be', 'are', 'was', 'were', 'has', 'have', 'had'
+    "и",
+    "в",
+    "на",
+    "по",
+    "с",
+    "к",
+    "у",
+    "о",
+    "а",
+    "но",
+    "же",
+    "бы",
+    "ли",
+    "что",
+    "за",
+    "под",
+    "над",
+    "при",
+    "без",
+    "для",
+    "от",
+    "до",
+    "из",
+    "об",
+    "во",
+    "я",
+    "ты",
+    "он",
+    "она",
+    "оно",
+    "мы",
+    "вы",
+    "они",
+    "её",
+    "его",
+    "мне",
+    "тебе",
+    "is",
+    "a",
+    "the",
+    "to",
+    "of",
+    "and",
+    "in",
+    "for",
+    "on",
+    "with",
+    "at",
+    "by",
+    "from",
+    "as",
+    "or",
+    "an",
+    "be",
+    "are",
+    "was",
+    "were",
+    "has",
+    "have",
+    "had",
 }
 
 
@@ -84,6 +139,66 @@ def extract_text_from_pdf(pdf_path):
 
     doc.close()
     return pages_text, all_words, confidences
+
+
+def extract_words_with_coords(pdf_path):
+    """
+    Извлечение всех слов с координатами из PDF.
+
+    Возвращает список слов с координатами bounding box:
+    [
+        {"text": "слово", "page": 1, "x0": 100, "y0": 200, "x1": 150, "y1": 220},
+        ...
+    ]
+    """
+    words_with_coords = []
+    doc = fitz.open(pdf_path)
+
+    for page_num, page in enumerate(doc):
+        pixmap = page.get_pixmap(matrix=fitz.Matrix(SCALE, SCALE))
+        image = Image.open(io.BytesIO(pixmap.tobytes("png")))
+        image = preprocess_image(image)
+
+        # Получаем данные с координатами
+        data = pytesseract.image_to_data(
+            image,
+            lang="rus+eng",
+            config="--psm 3 --oem 3",
+            output_type=pytesseract.Output.DICT,
+        )
+
+        # Масштаб для конвертации координат Tesseract → PDF
+        scale_x = page.rect.width / image.width
+        scale_y = page.rect.height / image.height
+
+        for i in range(len(data["text"])):
+            word_text = data["text"][i].strip()
+            if word_text:
+                # Координаты от Tesseract (в масштабе изображения)
+                x0 = data["left"][i]
+                y0 = data["top"][i]
+                x1 = x0 + data["width"][i]
+                y1 = y0 + data["height"][i]
+
+                # Конвертируем в координаты PDF
+                pdf_x0 = x0 * scale_x
+                pdf_y0 = y0 * scale_y
+                pdf_x1 = x1 * scale_x
+                pdf_y1 = y1 * scale_y
+
+                words_with_coords.append(
+                    {
+                        "text": word_text,
+                        "page": page_num + 1,
+                        "x0": pdf_x0,
+                        "y0": pdf_y0,
+                        "x1": pdf_x1,
+                        "y1": pdf_y1,
+                    }
+                )
+
+    doc.close()
+    return words_with_coords
 
 
 def build_confidence_map(words):

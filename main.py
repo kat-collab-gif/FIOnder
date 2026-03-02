@@ -1,37 +1,50 @@
 """
-Пример: Сохранить текст из PDF в TXT файл
+Пример: Сохранить текст из PDF в TXT файл + поиск и подсветка слов
 """
 
 import os
 import time
 
-from ocr_search import process_pdf
+from ocr_search import extract_words_with_coords, process_pdf
+from search import find_and_highlight
 
 # === НАСТРОЙКИ ===
-FILE_INPUT = "new"  # Без расширения .pdf
+FILE_INPUT = "CROC"  # Без расширения .pdf
+SEARCH_TERMS = "Денис, Сабина, Сертификат"  # Искомые слова через запятую
 # =================
 
 start = time.time()
 ts = int(start)
 
 os.makedirs("output", exist_ok=True)
-output = f"output/{FILE_INPUT}Output{ts}.txt"
+output_txt = f"output/{FILE_INPUT}Output{ts}.txt"
+output_pdf = f"output/{FILE_INPUT}Highlighted{ts}.pdf"
 
 print(f"Обработка {FILE_INPUT}.pdf...")
 
-# Обрабатываем PDF один раз
-print(">>> Вызов process_pdf...")
+# 1. Извлекаем текст (OCR + фильтрация)
 result = process_pdf(f"{FILE_INPUT}.pdf")
-print(f">>> process_pdf завершён за {result['elapsed_time']:.2f} сек.")
 
 # Сохраняем текст в файл
-with open(output, "w", encoding="utf-8") as f:
+with open(output_txt, "w", encoding="utf-8") as f:
     f.write(result["text"])
 
-print("\nРезультаты:")
-print(f"  Страниц: {result['pages']}")
-print(f"  Средняя уверенность: {result['confidence']:.1f}%")
-print(f"  Распознано слов: {result['words']}")
-print(f"  Время обработки: {result['elapsed_time']:.2f} сек.")
-print(f"\nСохранено в: {output}")
-print(f"Общее время: {time.time() - start:.2f} сек.")
+print(f"\nТекст сохранён в: {output_txt}")
+
+# 2. Извлекаем слова с координатами для поиска
+print("\nИзвлечение слов с координатами...")
+words_with_coords = extract_words_with_coords(f"{FILE_INPUT}.pdf")
+print(f"Найдено слов: {len(words_with_coords)}")
+
+# 3. Поиск и подсветка
+print(f'\nПоиск: "{SEARCH_TERMS}"...')
+found = find_and_highlight(
+    f"{FILE_INPUT}.pdf", output_pdf, words_with_coords, SEARCH_TERMS
+)
+
+print(f"Найдено совпадений: {len(found)}")
+if found:
+    print("\nРезультаты:")
+    for item in found:
+        print(f"  Стр. {item['page']}: {item['found_text']}")
+    print(f"\nПодсвеченный PDF: {output_pdf}")
