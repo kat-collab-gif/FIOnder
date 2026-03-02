@@ -12,10 +12,17 @@ exclude = [
     ".ruff_cache",
 ]
 
+# Максимальная длина строки
+line-length = 88
+
 # Настройки линтера
 [lint]
-select = ["E", "F", "W", "I"]  # Pyflakes, pycodestyle, isort
+select = ["E", "F", "W", "I"]
 ignore = []
+
+# Предупреждения о длине строки
+[lint.pycodestyle]
+max-line-length = 88
 
 # Настройки форматирования
 [format]
