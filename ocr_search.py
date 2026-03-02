@@ -34,26 +34,6 @@ SHORT_WORDS = {
 # =============================================================================
 
 
-def is_valid_word(word, confidence):
-    """Проверка слова на валидность."""
-    if "&" in word and len(word) > 3:
-        return True
-
-    if len(word) <= 2:
-        return word.lower() in SHORT_WORDS
-
-    if re.search(r"(.)\1{2,}", word):
-        return False
-
-    letters = [char for char in word if char.isalpha()]
-    if letters and len(word) >= 3:
-        vowel_ratio = sum(1 for char in letters if char in VOWELS) / len(letters)
-        if not (0.25 <= vowel_ratio <= 0.75):
-            return False
-
-    return len(word) > 4 or confidence >= 40
-
-
 def preprocess_image(image):
     """Предобработка изображения перед OCR."""
     image = image.convert("L")
@@ -118,6 +98,26 @@ def build_confidence_map(words):
                 conf_map[clean] = []
             conf_map[clean].append(conf)
     return conf_map
+
+
+def is_valid_word(word, confidence):
+    """Проверка слова на валидность."""
+    # if "&" in word and len(word) > 3:
+    #     return True
+
+    if len(word) <= 2:
+        return word.lower() in SHORT_WORDS
+
+    if re.search(r"(.)\1{2,}", word):
+        return False
+
+    letters = [char for char in word if char.isalpha()]
+    if letters and len(word) >= 3:
+        vowel_ratio = sum(1 for char in letters if char in VOWELS) / len(letters)
+        if not (0.25 <= vowel_ratio <= 0.75):
+            return False
+
+    return len(word) > 4 or confidence >= 40
 
 
 def filter_text(pages_text, confidence_map):
@@ -188,7 +188,7 @@ def process_pdf(pdf_path):
     conf_map = build_confidence_map(all_words)
 
     filtered_words = filter_text(pages_text, conf_map)
-    filtered_words = remove_trailing_garbage(filtered_words, conf_map)
+    # filtered_words = remove_trailing_garbage(filtered_words, conf_map)
 
     result_text = " ".join(filtered_words)
     avg_confidence = sum(confidences) / len(confidences) if confidences else 0
