@@ -5,12 +5,12 @@
 import os
 import time
 
-from ocr_search import extract_words_with_coords, process_pdf
+from extractor import extract_words_with_coords, process_pdf
 from search import find_and_highlight
 
 # === НАСТРОЙКИ ===
-FILE_INPUT = "CROC"  # Без расширения .pdf
-SEARCH_TERMS = "Денис, Сабина, Сертификат"  # Искомые слова через запятую
+FILE_INPUT = "doc"  # Без расширения .pdf
+SEARCH_TERMS = "Гнетецкий ф. э."  # Искомые слова через запятую
 # =================
 
 
@@ -19,17 +19,17 @@ def main():
     ts = int(start)
 
     os.makedirs("output", exist_ok=True)
-    # output_txt = f"output/{FILE_INPUT}Output{ts}.txt"
-    output_pdf = f"output/{FILE_INPUT}Highlighted{ts}.pdf"
 
     # 1. Извлечение текста (OCR + фильтрация) → TXT
-    # extract_text(FILE_INPUT, output_txt)
+    output_txt = f"output/{FILE_INPUT}Output{ts}.txt"
+    extract_text(FILE_INPUT, output_txt)
 
     # 2. Извлечение слов с координатами
     words_with_coords = extract_words_with_coords(f"{FILE_INPUT}.pdf")
     print(f"Найдено слов: {len(words_with_coords)}")
 
     # 3. Поиск и подсветка
+    output_pdf = f"output/{FILE_INPUT}Highlighted{ts}.pdf"
     found = highlight_words(FILE_INPUT, output_pdf, words_with_coords)
 
     # 4. Вывод результатов

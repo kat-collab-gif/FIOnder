@@ -7,6 +7,41 @@ import re
 import fitz
 
 
+def normalize_term(term, is_first=False):
+    """
+    Нормализация слова:
+    - "Ф." → "Ф"
+    - "Федор" → "Ф" (если это не первое слово)
+    - "ГНЕТЕЦКИЙ" → "ГНЕТЕЦКИЙ"
+    """
+    term = term.strip().upper().rstrip(".")
+    if not term:
+        return ""
+    # Первое слово (фамилия) оставляем полностью
+    if is_first:
+        return term
+    # Короткие слова (1-2 буквы) — это инициалы
+    if len(term) <= 2:
+        return term[0]
+    # Длинные слова после первого — тоже сокращаем до первой буквы
+    return term[0]
+
+
+def normalize_phrase(phrase):
+    """
+    Нормализация всей фразы:
+    "Гнетецкий Федор Эдуардович" → ["ГНЕТЕЦКИЙ", "Ф", "Э"]
+    "гнетецкий ф. э." → ["ГНЕТЕЦКИЙ", "Ф", "Э"]
+    """
+    words = phrase.split()
+    normalized = []
+    for i, word in enumerate(words):
+        norm = normalize_term(word, is_first=(i == 0))
+        if norm:
+            normalized.append(norm)
+    return normalized
+
+
 def search_words(words_with_coords, search_terms):
     """
     Поиск указанных слов в списке слов с координатами.
@@ -74,14 +109,101 @@ def highlight_words_in_pdf(pdf_path, output_path, found_words):
     doc.close()
 
 
+def search_phrase_with_gaps(words_with_coords, search_phrase, max_gap=10):
+    """
+    Поиск фразы с пропусками между словами.
+    Нормализует запрос и текст, ищет последовательность.
+    
+    max_gap — максимальное количество пропускаемых слов между элементами фразы
+    """
+    # Нормализуем запрос
+    query_terms = normalize_phrase(search_phrase)
+    if not query_terms:
+        return []
+    
+    print(f"  [DEBUG] Нормализованный запрос: {query_terms}")
+    
+    found = []
+    n = len(words_with_coords)
+    
+    for i in range(n):
+        # Нормализуем текущее слово из текста
+        word_text = words_with_coords[i]["text"].strip().upper().rstrip(".")
+        word_normalized = normalize_term(word_text, is_first=False)
+        
+        # Проверяем, начинается ли совпадение с этого слова
+        # Первое слово фразы сравниваем полностью (фамилия)
+        word_first = normalize_term(word_text, is_first=True)
+        if word_first != query_terms[0]:
+            continue
+        
+        # Пытаемся найти всю последовательность
+        matched_words = [words_with_coords[i]]
+        query_idx = 1
+        text_idx = i + 1
+        gap_count = 0
+        
+        while query_idx < len(query_terms) and text_idx < n:
+            next_word_text = words_with_coords[text_idx]["text"].strip().upper().rstrip(".")
+            next_word_normalized = normalize_term(next_word_text, is_first=False)
+            
+            if next_word_normalized == query_terms[query_idx]:
+                matched_words.append(words_with_coords[text_idx])
+                query_idx += 1
+                gap_count = 0
+            else:
+                gap_count += 1
+                # Если слишком большой разрыв — прерываем
+                if gap_count > max_gap:
+                    break
+            
+            text_idx += 1
+        
+        # Если все слова найдены
+        if query_idx == len(query_terms):
+            found_phrase = {
+                "search_term": search_phrase,
+                "found_text": " ".join(w["text"] for w in matched_words),
+                "page": matched_words[0]["page"],
+                "x0": matched_words[0]["x0"],
+                "y0": matched_words[0]["y0"],
+                "x1": matched_words[-1]["x1"],
+                "y1": matched_words[-1]["y1"],
+            }
+            print(f"  [DEBUG] Найдено: {found_phrase['found_text']} на стр. {found_phrase['page']}")
+            found.append(found_phrase)
+    
+    return found
+
+
 def find_and_highlight(pdf_path, output_path, words_with_coords, search_terms):
     """
     Полный пайплайн: поиск → подсветка.
 
     Возвращает список найденных слов и сохраняет подсвеченный PDF.
     """
-    # Ищем нужные слова
-    found = search_words(words_with_coords, search_terms)
+    found = []
+    
+    # Парсим поисковые термины
+    if isinstance(search_terms, str):
+        terms = [t.strip() for t in search_terms.split(",")]
+    else:
+        terms = search_terms
+    
+    print(f"  [DEBUG] Термины: {terms}")
+    
+    # Для каждого термина пытаемся найти как фразу
+    for term in terms:
+        print(f"  [DEBUG] Обработка термина: '{term}', пробелы: {' ' in term}")
+        # Если термин содержит пробелы — ищем как фразу с пропусками
+        if " " in term:
+            phrase_matches = search_phrase_with_gaps(words_with_coords, term)
+            print(f"  [DEBUG] Найдено фраз: {len(phrase_matches)}")
+            found.extend(phrase_matches)
+        else:
+            # Иначе ищем как отдельное слово (старый метод)
+            word_matches = search_words(words_with_coords, [term])
+            found.extend(word_matches)
 
     # Подсвечиваем в PDF
     if found:
