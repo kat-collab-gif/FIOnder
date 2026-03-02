@@ -5,10 +5,10 @@
 import os
 import time
 
-from ocr_search import get_text_with_stats, save_to_txt_clean
+from ocr_search import process_pdf
 
 # === НАСТРОЙКИ ===
-FILE_INPUT = "CROC"  # Без расширения .pdf
+FILE_INPUT = "new"  # Без расширения .pdf
 # =================
 
 start = time.time()
@@ -19,15 +19,19 @@ output = f"output/{FILE_INPUT}Output{ts}.txt"
 
 print(f"Обработка {FILE_INPUT}.pdf...")
 
-save_to_txt_clean(f"{FILE_INPUT}.pdf", output)
+# Обрабатываем PDF один раз
+print(">>> Вызов process_pdf...")
+result = process_pdf(f"{FILE_INPUT}.pdf")
+print(f">>> process_pdf завершён за {result['elapsed_time']:.2f} сек.")
 
-# Статистика
-stats = get_text_with_stats(f"{FILE_INPUT}.pdf")
+# Сохраняем текст в файл
+with open(output, "w", encoding="utf-8") as f:
+    f.write(result["text"])
 
 print("\nРезультаты:")
-print(f"  Страниц: {stats['pages']}")
-print(f"  Средняя уверенность: {stats['confidence']:.1f}%")
-print(f"  Распознано слов: {stats['words']}")
-print(f"  Время обработки: {stats['elapsed_time']:.2f} сек.")
+print(f"  Страниц: {result['pages']}")
+print(f"  Средняя уверенность: {result['confidence']:.1f}%")
+print(f"  Распознано слов: {result['words']}")
+print(f"  Время обработки: {result['elapsed_time']:.2f} сек.")
 print(f"\nСохранено в: {output}")
 print(f"Общее время: {time.time() - start:.2f} сек.")

@@ -201,15 +201,3 @@ def process_pdf(pdf_path):
         "elapsed_time": elapsed_time,
         "words": len(result_text.split()),
     }
-
-
-def get_text_with_stats(pdf_path):
-    """Получить текст со статистикой."""
-    return process_pdf(pdf_path)
-
-
-def save_to_txt_clean(pdf_path, txt_path):
-    """Сохранить текст в TXT файл."""
-    result = process_pdf(pdf_path)
-    with open(txt_path, "w", encoding="utf-8") as f:
-        f.write(result["text"])
