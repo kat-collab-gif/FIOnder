@@ -1,4 +1,4 @@
-# PDFinder — OCR для PDF
+# FIOnder — OCR для PDF
 
 Простой скрипт для распознавания текста в PDF с помощью Tesseract OCR.
 
@@ -203,12 +203,12 @@ PDFAnalyzer/
 ## Частые проблемы
 
 
-| Проблема                                           | Решение                                                                 |
-| -------------------------------------------------- | ----------------------------------------------------------------------- |
-| `Tesseract is not installed`                       | Установите Tesseract и добавьте в PATH (пункт 2)                        |
-| `TesseractNotFoundError`                           | Укажите путь в коде: `pytesseract.pytesseract.tesseract_cmd = ...`      |
-| `Data file for language 'rus' not found`           | Скачайте `rus.traineddata` (пункт 3)                                    |
-| `ModuleNotFoundError: No module named 'fitz'`      | `pip install -r requirements.txt`                                       |
-| Плохое распознавание                               | Убедитесь, что PDF не размыт, попробуйте `_best` модель                 |
+| Проблема                                      | Решение                                                            |
+| --------------------------------------------- | ------------------------------------------------------------------ |
+| `Tesseract is not installed`                  | Установите Tesseract и добавьте в PATH (пункт 2)                   |
+| `TesseractNotFoundError`                      | Укажите путь в коде: `pytesseract.pytesseract.tesseract_cmd = ...` |
+| `Data file for language 'rus' not found`      | Скачайте `rus.traineddata` (пункт 3)                               |
+| `ModuleNotFoundError: No module named 'fitz'` | `pip install -r requirements.txt`                                  |
+| Плохое распознавание                          | Убедитесь, что PDF не размыт, попробуйте `_best` модель            |
 
 
