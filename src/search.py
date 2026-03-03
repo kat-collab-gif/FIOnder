@@ -1,8 +1,5 @@
-"""
-Поиск слов в PDF с координатами и подсветка.
-"""
-
 import re
+import time
 
 import fitz
 
@@ -15,16 +12,14 @@ def normalize_term(term, is_first=False):
     - "Федор" → "Ф" (если это не первое слово)
     - "ГНЕТЕЦКИЙ" → "ГНЕТЕЦКИЙ"
     """
-    term = term.strip().upper().rstrip(".")  # Удаляем точку если есть
+
+    term = term.strip().upper().rstrip(".")
     if not term:
         return ""
-    # Первое слово (фамилия) оставляем полностью
     if is_first:
         return term
-    # Короткие слова (1-2 буквы) — это инициалы
     if len(term) <= 2:
         return term[0]
-    # Длинные слова после первого — тоже сокращаем до первой буквы
     return term[0]
 
 
@@ -34,6 +29,7 @@ def normalize_phrase(phrase):
     "Гнетецкий Федор Эдуардович" → ["ГНЕТЕЦКИЙ", "Ф", "Э"]
     "гнетецкий ф. э." → ["ГНЕТЕЦКИЙ", "Ф", "Э"]
     """
+
     words = phrase.split()
     normalized = []
     for i, word in enumerate(words):
@@ -48,7 +44,7 @@ def search_words(words_with_coords, search_terms):
     Поиск указанных слов в списке слов с координатами.
     O(n) сложность — один проход по списку.
     """
-    # Парсим поисковые термины
+
     if isinstance(search_terms, str):
         terms = [t.strip().lower() for t in search_terms.split(",")]
     else:
@@ -57,13 +53,10 @@ def search_words(words_with_coords, search_terms):
     found = []
     for word_data in words_with_coords:
         word_lower = word_data["text"].lower()
-        # Очищаем слово от спецсимволов для сравнения
-        word_clean = re.sub(
-            r"^[^\wА-Яа-яA-Za-z]+|[^\wА-Яа-яA-Za-z]+$", "", word_lower
-        )
+        word_clean = re.sub(r"^[^\wА-Яа-яA-Za-z]+|[^\wА-Яа-яA-Za-z]+$", "", word_lower)
 
         for term in terms:
-            if term == word_clean:  # Точное совпадение
+            if term == word_clean:
                 found.append(
                     {
                         "search_term": term,
@@ -75,7 +68,7 @@ def search_words(words_with_coords, search_terms):
                         "y1": word_data["y1"],
                     }
                 )
-                break  # Нашли совпадение — переходим к следующему слову
+                break
 
     return found
 
@@ -87,7 +80,7 @@ def search_phrase_with_gaps(words_with_coords, search_phrase, max_gap=15):
 
     max_gap — максимальное количество пропускаемых слов между элементами фразы
     """
-    # Нормализуем запрос
+
     query_terms = normalize_phrase(search_phrase)
     if not query_terms:
         return []
@@ -103,15 +96,14 @@ def search_phrase_with_gaps(words_with_coords, search_phrase, max_gap=15):
         if word_first != first_term:
             continue
 
-        # Пытаемся найти всю последовательность
         matched_words = [words_with_coords[i]]
         query_idx = 1
         text_idx = i + 1
         gap_count = 0
 
         while query_idx < len(query_terms) and text_idx < n:
-            next_word_text = words_with_coords[text_idx]["text"].strip().upper().rstrip(
-                "."
+            next_word_text = (
+                words_with_coords[text_idx]["text"].strip().upper().rstrip(".")
             )
             next_word_normalized = normalize_term(next_word_text, is_first=False)
 
@@ -121,13 +113,11 @@ def search_phrase_with_gaps(words_with_coords, search_phrase, max_gap=15):
                 gap_count = 0
             else:
                 gap_count += 1
-                # Если слишком большой разрыв — прерываем
                 if gap_count > max_gap:
                     break
 
             text_idx += 1
 
-        # Если все слова найдены
         if query_idx == len(query_terms):
             found_phrase = {
                 "search_term": search_phrase,
@@ -147,16 +137,14 @@ def highlight_words_in_pdf(pdf_path, output_path, found_words):
     """
     Подсветка найденных слов в PDF файле.
     """
-    doc = fitz.open(pdf_path)
 
+    doc = fitz.open(pdf_path)
     for item in found_words:
-        page_num = item["page"] - 1  # fitz использует 0-based индекс
+        page_num = item["page"] - 1
         page = doc[page_num]
 
-        # Создаём прямоугольник вокруг слова
         rect = fitz.Rect(item["x0"], item["y0"], item["x1"], item["y1"])
 
-        # Рисуем красную рамку (толщина 2px)
         page.draw_rect(rect, color=(1, 0, 0), width=2)
 
     doc.save(output_path)
@@ -167,31 +155,25 @@ def find_and_highlight(pdf_path, output_path, words_with_coords, search_terms):
     """
     Полный пайплайн: поиск → подсветка.
     """
-    import time
     start_time = time.time()
-    
+
     found = []
 
-    # Парсим поисковые термины
     if isinstance(search_terms, str):
         terms = [t.strip() for t in search_terms.split(",")]
     else:
         terms = search_terms
 
-    # Для каждого термина пытаемся найти как фразу
     for term in terms:
-        # Если термин содержит пробелы — ищем как фразу с пропусками
         if " " in term:
             phrase_matches = search_phrase_with_gaps(words_with_coords, term)
             found.extend(phrase_matches)
         else:
-            # Иначе ищем как отдельное слово (старый метод)
             word_matches = search_words(words_with_coords, [term])
             found.extend(word_matches)
 
     search_time = time.time() - start_time
-    
-    # Подсвечиваем в PDF
+
     if found:
         highlight_time_start = time.time()
         highlight_words_in_pdf(pdf_path, output_path, found)

@@ -1,7 +1,3 @@
-"""
-Точка входа для PDF Analyzer.
-"""
-
 import os
 import time
 
@@ -21,7 +17,6 @@ def main():
 
     os.makedirs("output", exist_ok=True)
     print(f"[TIME] Init: {time.time() - start:.2f}s")
-    
 
     # 1. Извлечение слов с координатами
     coords_start = time.time()

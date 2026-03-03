@@ -1,7 +1,3 @@
-"""
-OCR для PDF файлов с умной фильтрацией мусора.
-"""
-
 import io
 import re
 import time
@@ -151,17 +147,16 @@ def extract_words_with_coords(pdf_path):
         ...
     ]
     """
-    import time
+
     start_time = time.time()
-    
+
     words_with_coords = []
     doc = fitz.open(pdf_path)
-    
+
     ocr_time = 0
     process_time = 0
 
     for page_num, page in enumerate(doc):
-        # Замер OCR
         ocr_start = time.time()
         pixmap = page.get_pixmap(matrix=fitz.Matrix(SCALE, SCALE))
         image = Image.open(io.BytesIO(pixmap.tobytes("png")))
@@ -174,8 +169,7 @@ def extract_words_with_coords(pdf_path):
             output_type=pytesseract.Output.DICT,
         )
         ocr_time += time.time() - ocr_start
-        
-        # Замер обработки
+
         process_start = time.time()
         scale_x = page.rect.width / image.width
         scale_y = page.rect.height / image.height
@@ -183,13 +177,11 @@ def extract_words_with_coords(pdf_path):
         for i in range(len(data["text"])):
             word_text = data["text"][i].strip()
             if word_text:
-                # Координаты от Tesseract (в масштабе изображения)
                 x0 = data["left"][i]
                 y0 = data["top"][i]
                 x1 = x0 + data["width"][i]
                 y1 = y0 + data["height"][i]
 
-                # Конвертируем в координаты PDF
                 pdf_x0 = x0 * scale_x
                 pdf_y0 = y0 * scale_y
                 pdf_x1 = x1 * scale_x
@@ -208,17 +200,20 @@ def extract_words_with_coords(pdf_path):
         process_time += time.time() - process_start
 
     doc.close()
-    
+
     total_time = time.time() - start_time
-    print(f"\n[TIME] OCR: {ocr_time:.2f}s ({ocr_time/total_time*100:.0f}%)")
-    print(f"[TIME] Coords: {process_time:.2f}s ({process_time/total_time*100:.0f}%)")
+    print(f"\n[TIME] OCR: {ocr_time:.2f}s ({ocr_time / total_time * 100:.0f}%)")
+    print(
+        f"[TIME] Coords: {process_time:.2f}s ({process_time / total_time * 100:.0f}%)"
+    )
     print(f"[TIME] TOTAL: {total_time:.2f}s")
-    
+
     return words_with_coords
 
 
 def build_confidence_map(words):
     """Построение карты уверенности: слово -> список уверенностей."""
+
     conf_map = {}
     for word_data in words:
         text = word_data["text"]
@@ -233,9 +228,9 @@ def build_confidence_map(words):
 
 def is_valid_word(word, confidence):
     """Проверка слова на валидность."""
-    # Инициалы: одна заглавная буква (с точкой или без: Ф, Ф., A, A.)
+
     if re.match(r"^[А-Яа-яA-Za-z]\.?$", word):
-        return confidence >= 20  # Пропускаем с низкой уверенностью
+        return confidence >= 20
 
     if len(word) <= 2:
         return word.lower() in SHORT_WORDS
@@ -254,6 +249,7 @@ def is_valid_word(word, confidence):
 
 def filter_text(pages_text, confidence_map):
     """Фильтрация текста от мусора."""
+
     filtered = []
 
     for page_text in pages_text:
@@ -267,7 +263,6 @@ def filter_text(pages_text, confidence_map):
                 continue
 
             for word in line.split():
-                # Для инициалов (Ф, Ф., Э, Э.) сохраняем как есть
                 if re.match(r"^[А-Яа-яA-Za-z]\.?$", word):
                     clean = word
                 else:
@@ -288,6 +283,7 @@ def filter_text(pages_text, confidence_map):
 
 def remove_trailing_garbage(words, confidence_map):
     """Удаление мусора в конце текста."""
+
     if not words:
         return words
 
@@ -317,6 +313,7 @@ def remove_trailing_garbage(words, confidence_map):
 
 def process_pdf(pdf_path):
     """Обработка PDF файла: OCR + фильтрация."""
+
     start_time = time.time()
 
     pages_text, all_words, confidences = extract_text_from_pdf(pdf_path)
@@ -324,7 +321,6 @@ def process_pdf(pdf_path):
     conf_map = build_confidence_map(all_words)
 
     filtered_words = filter_text(pages_text, conf_map)
-    # filtered_words = remove_trailing_garbage(filtered_words, conf_map)
 
     result_text = " ".join(filtered_words)
     avg_confidence = sum(confidences) / len(confidences) if confidences else 0
