@@ -18,8 +18,8 @@ from search import search_in_text
 # НАСТРОЙКИ
 # =============================================================================
 
-FILE_INPUT = "doc"  # Без расширения .pdf
-SEARCH_TERMS = "Гнетецкий ф. э."  # Искомые слова через запятую
+FILE_INPUT = "test"  # Без расширения .pdf
+SEARCH_TERMS = "Иванов И И"  # Искомые слова через запятую
 SAVE_TEXT_FILE = False  # Сохранять ли текст в TXT (True/False)
 
 # Пути
