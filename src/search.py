@@ -314,11 +314,16 @@ def prepare_tokens(words_with_coords: list) -> list:
             if is_horizontal or is_vertical:
                 # Для склейки создаём правильный bounding box
                 # который охватывает обе части слова
+                # Также сохраняем координаты каждой части для подсветки
                 merged.append({
                     **rw,
                     "text": text[:-1] + nxt["text"],
                     "x1": max(rw["x1"], nxt["x1"]),  # Правая граница
                     "y1": max(rw["y1"], nxt["y1"]),  # Нижняя граница (для вертикальных переносов)
+                    "parts": [  # Координаты каждой части для подсветки
+                        {"x0": rw["x0"], "y0": rw["y0"], "x1": rw["x1"], "y1": rw["y1"]},
+                        {"x0": nxt["x0"], "y0": nxt["y0"], "x1": nxt["x1"], "y1": nxt["y1"]},
+                    ],
                 })
                 skip_next = (j == k + 1)
                 # Пропускаем все токены между k и j
@@ -343,6 +348,9 @@ def prepare_tokens(words_with_coords: list) -> list:
         if not text:
             continue
         base = {k: rw[k] for k in ("page", "x0", "y0", "x1", "y1", "idx")}
+        # Сохраняем parts если есть (для склеенных переносов)
+        if "parts" in rw:
+            base["parts"] = rw["parts"]
 
         if _is_double_initial(text):
             for letter in _split_double_initial(text):
@@ -702,19 +710,37 @@ def _search_fio(tokens: list, query: dict) -> list:
             continue
 
         for m in matched:
-            key = (m["page"], round(m["x0"], 1), round(m["y0"], 1))
-            if key in seen:
-                continue
-            seen.add(key)
-            results.append({
-                "search_term": query.get("_raw", ""),
-                "found_text":  m["raw"],
-                "page":        m["page"],
-                "x0":          m["x0"],
-                "y0":          m["y0"],
-                "x1":          m["x1"],
-                "y1":          m["y1"],
-            })
+            # Если у токена есть части (для склеенных переносов),
+            # создаём отдельный результат для каждой части
+            if "parts" in m:
+                for part_idx, part in enumerate(m["parts"]):
+                    key = (m["page"], round(part["x0"], 1), round(part["y0"], 1))
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    results.append({
+                        "search_term": query.get("_raw", ""),
+                        "found_text":  m["raw"] if part_idx == 0 else "",
+                        "page":        m["page"],
+                        "x0":          part["x0"],
+                        "y0":          part["y0"],
+                        "x1":          part["x1"],
+                        "y1":          part["y1"],
+                    })
+            else:
+                key = (m["page"], round(m["x0"], 1), round(m["y0"], 1))
+                if key in seen:
+                    continue
+                seen.add(key)
+                results.append({
+                    "search_term": query.get("_raw", ""),
+                    "found_text":  m["raw"],
+                    "page":        m["page"],
+                    "x0":          m["x0"],
+                    "y0":          m["y0"],
+                    "x1":          m["x1"],
+                    "y1":          m["y1"],
+                })
 
     return results
 
